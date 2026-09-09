@@ -1,0 +1,78 @@
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lincoln Academy</title>
+  <link rel="stylesheet" href="forms.css">
+</head>
+
+<body>
+  <div class="container">
+    <div class="left">
+      <h1>welcome to Lincoln Academy</h1>
+      <h5>welcome to Lincoln Academy Portal</h5>
+      </div>
+      <div class="right">
+      <h1>Create Your Account </h1>
+      <h5>Register to get started with Lincoln academy portal</h5>
+      <div class="group">
+  <label>First Name</label>
+  <input type="text">
+  </div>
+<div class="group">
+  <label>Admission No.</label>
+  <input type="text">
+  </div>
+<div class="group">
+  <label>Email address</label>
+  <input type="email">
+  </div>
+<div class="group">
+  <label>Password</label>
+  <input type="password">
+  </div>
+  <div class="group">
+  <label>Role</label>
+  <div class="role-option">
+    <input type="radio" name="role"> <span>Student</span>
+  </div>
+  <div class="role-option">
+    <input type="radio" name="role"> <span>Teacher</span>
+  </div>
+  <div class="role-option">
+    <input type="radio" name="role"> <span>Admin</span>
+  </div>
+</div> 
+<button>Create Account</button>
+    <p style="text-align:center; font-size:13px; margin-top:16px;">
+  Already have an account? <a href="login.html" style="color:#0f4cb8; text-decoration:none; font-weight:bold;">Sign In</a>
+</p>
+</div>
+</div>
+<script>
+document.querySelector('button').addEventListener('click', function(e){
+  e.preventDefault();
+  const firstName = document.querySelectorAll('input')[0].value;
+  const adm = document.querySelectorAll('input')[1].value;
+  const email = document.querySelectorAll('input')[2].value;
+  const pass = document.querySelectorAll('input')[3].value;
+  const role = document.querySelector('input[name="role"]:checked');
+
+  if(!email ||!pass ||!firstName){ alert('Fill all fields'); return; }
+  if(!role){ alert('Pick a Role'); return; }
+  let users = JSON.parse(localStorage.getItem('lincoln_users') || '[]');
+  if(users.find(u => u.email === email)){
+    alert('Account already exists! Go to Sign In');
+    return;
+  }
+
+  users.push({firstName, adm, email, pass, role: role.nextElementSibling.innerText});
+  localStorage.setItem('lincoln_users', JSON.stringify(users));
+  alert('Account created! Now sign in');
+  window.location.href = 'login.html';
+});
+</script>
+</body>
+
+</html>
