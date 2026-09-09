@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="forms.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+<div class="container">
+  <div class="left">
+    <h1>welcome to Lincoln Academy</h1>
+    <h5>welcome back! Please login to your account</h5>
+  </div>
+
+  <div class="right">
+    <h1>Welcome Back</h1>
+    <h5>Sign in to continue to Lincoln academy portal</h5>
+
+    <div class="group">
+      <label>Email address</label>
+      <input type="email" placeholder="you@school.com">
+    </div>
+
+    <div class="group">
+      <label>Password</label>
+      <input type="password">
+    </div>
+
+    <p style="text-align:right; font-size:13px; margin-top:-8px;">
+      <a href="#" style="color:#0f4cb8; text-decoration:none;">Forgot password?</a>
+    </p>
+
+    <button>Sign In</button>
+
+    <p style="text-align:center; font-size:13px; margin-top:16px;">
+      Don't have an account? <a href="forms.html" style="color:#0f4cb8; text-decoration:none; font-weight:bold;">Create Account</a>
+    </p>
+  </div>
+</div>
+<script>
+document.querySelector('button').addEventListener('click', function(e){
+  e.preventDefault();
+  const email = document.querySelector('input[type="email"]').value;
+  const pass = document.querySelector('input[type="password"]').value;
+
+  let users = JSON.parse(localStorage.getItem('lincoln_users') || '[]');
+  let found = users.find(u => u.email === email && u.pass === pass);
+
+  if(found){
+    alert('Welcome ' + found.firstName + ' (' + found.role + ')!');
+    localStorage.setItem('current_user', JSON.stringify(found));
+    window.location.href = 'dashboard.html';
+  } else {
+    alert('Wrong email or password');
+  }
+});
+</script>
+</body>
+</html>
