@@ -1,79 +1,62 @@
 <!DOCTYPE html>
-<html>
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lincoln Academy</title>
-  <link rel="stylesheet" href="forms.css">
-</head>
-
-<body>
-  <div class="container">
-    <div class="left">
-      <h1>welcome to Lincoln Academy</h1>
-      <h5>welcome to Lincoln Academy Portal</h5>
-      </div>
-      <div class="right">
-      <h1>Create Your Account </h1>
-      <h5>Register to get started with Lincoln academy portal</h5>
-      <div class="group">
-  <label>First Name</label>
-  <input type="text">
-  </div>
-<div class="group">
-  <label>Admission No.</label>
-  <input type="text">
-  </div>
-<div class="group">
-  <label>Email address</label>
-  <input type="email">
-  </div>
-<div class="group">
-  <label>Password</label>
-  <input type="password">
-  </div>
-  <div class="group">
-  <label>Role</label>
-  <div class="role-option">
-    <input type="radio" name="role"> <span>Student</span>
-  </div>
-  <div class="role-option">
-    <input type="radio" name="role"> <span>Teacher</span>
-  </div>
-  <div class="role-option">
-    <input type="radio" name="role"> <span>Admin</span>
-  </div>
-</div> 
-<button>Create Account</button>
-    <p style="text-align:center; font-size:13px; margin-top:16px;">
-  Already have an account? <a href="login.html" style="color:#0f4cb8; text-decoration:none; font-weight:bold;">Sign In</a>
-</p>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Lincoln Academy</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;width:100%;height:100%;background:#ffffff;font-family:sans-serif}
+h2{margin:0;padding:28px 20px 6px 20px;font-size:28px;color:#0b57d0;width:100%}
+.small{padding:0 20px 14px 20px;font-size:14px;color:#666;width:100%}
+#authBox,#loggedBox{width:100%;margin:0;border-radius:0;box-shadow:none;border:none;padding:20px}
+.card{background:white;padding:0;border-radius:0;box-shadow:none;margin:0}
+input,select{width:100%;height:58px;padding:0 16px;margin:8px 0;border-radius:14px;border:2px solid #ccc;font-size:19px;background:#f9f9f9}
+input:focus,select:focus{border-color:#0b57d0;background:white;outline:none}
+button{width:100%;height:58px;margin:8px 0;border-radius:14px;border:none;font-size:19px;font-weight:900;letter-spacing:0.5px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+</style>
+</head><body>
+<h2>Lincoln Academy Portal</h2>
+<p class="small">Lincoln Academy</p>
+<div id="authBox">
+<select id="role"><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select>
+<input id="email" placeholder="Email" autocomplete="off">
+<input id="pass" placeholder="Password" type="password" autocomplete="off">
+<input id="adminCode" placeholder="Enter Admin Secret Code" type="password" style="display:none" autocomplete="off">
+<input id="tSubj" placeholder="Subject you teach" style="display:none" autocomplete="off">
+<button onclick="signup()" style="background:#0b57d0;color:white">CREATE ACCOUNT</button>
+<button onclick="login()" style="background:#1e8e3e;color:white">LOGIN</button>
+<div id="msg" style="color:red;font-weight:bold;padding:10px"></div>
 </div>
+<div id="loggedBox" style="display:none">
+<div id="status" style="padding:10px 0;font-size:18px"></div>
+<button onclick="logout()" style="background:#333">Logout</button>
+<div id="main"></div>
 </div>
 <script>
-document.querySelector('button').addEventListener('click', function(e){
-  e.preventDefault();
-  const firstName = document.querySelectorAll('input')[0].value;
-  const adm = document.querySelectorAll('input')[1].value;
-  const email = document.querySelectorAll('input')[2].value;
-  const pass = document.querySelectorAll('input')[3].value;
-  const role = document.querySelector('input[name="role"]:checked');
-
-  if(!email ||!pass ||!firstName){ alert('Fill all fields'); return; }
-  if(!role){ alert('Pick a Role'); return; }
-  let users = JSON.parse(localStorage.getItem('lincoln_users') || '[]');
-  if(users.find(u => u.email === email)){
-    alert('Account already exists! Go to Sign In');
-    return;
-  }
-
-  users.push({firstName, adm, email, pass, role: role.nextElementSibling.innerText});
-  localStorage.setItem('lincoln_users', JSON.stringify(users));
-  alert('Account created! Now sign in');
-  window.location.href = 'login.html';
-});
+let users=JSON.parse(localStorage.getItem('lincoln_users')||'[]');
+let students=JSON.parse(localStorage.getItem('lincoln_students')||'[]');
+let results=JSON.parse(localStorage.getItem('lincoln_results')||'[]');
+let currentUser=JSON.parse(localStorage.getItem('lincoln_current')||'null');
+const ADMIN_SECRET="LINCOLN2026";
+function save(){localStorage.setItem('lincoln_users',JSON.stringify(users));localStorage.setItem('lincoln_students',JSON.stringify(students));localStorage.setItem('lincoln_results',JSON.stringify(results));}
+function showMsg(t){document.getElementById('msg').innerText=t;}
+function clearAuthForm(){document.getElementById('email').value="";document.getElementById('pass').value="";document.getElementById('adminCode').value="";document.getElementById('tSubj').value="";document.getElementById('msg').innerText="";document.getElementById('role').value="student";checkRoleChange();}
+function checkRoleChange(){const r=document.getElementById('role').value;document.getElementById('adminCode').style.display=(r==='admin')?'block':'none';document.getElementById('tSubj').style.display=(r==='teacher')?'block':'none';}
+function validateRoleEmail(email,role){const e=email.toLowerCase();if(e.includes('admin')&&role!=='admin')return"Email has 'admin' must be Admin";if(role==='admin'&&!e.includes('admin'))return"Admin email must contain 'admin'";if(e.includes('teacher')&&role!=='teacher')return"Email has 'teacher' must be Teacher";if(role==='teacher'&&!e.includes('teacher'))return"Teacher email must contain 'teacher'";return null;}
+function signup(){const email=document.getElementById('email').value.trim();const pass=document.getElementById('pass').value;const role=document.getElementById('role').value;const subj=document.getElementById('tSubj').value.trim();const err=validateRoleEmail(email,role);if(err){showMsg(err);return alert(err);}if(role==='admin'){const code=document.getElementById('adminCode').value.trim();if(code!==ADMIN_SECRET){showMsg("Wrong Code");return alert("Wrong Admin Secret Code");}}if(role==='teacher'&&!subj){showMsg("Enter subject");return;}if(users.find(u=>u.email.toLowerCase()===email.toLowerCase())){showMsg("Exists");return;}users.push({email,pass,role,subject:role==='teacher'?subj:''});save();showMsg("Created. Login now");setTimeout(clearAuthForm,800);}
+function login(){const email=document.getElementById('email').value.trim();const pass=document.getElementById('pass').value;const selRole=document.getElementById('role').value;const u=users.find(x=>x.email.toLowerCase()===email.toLowerCase()&&x.pass===pass);if(!u)return alert("Wrong credentials");const err=validateRoleEmail(email,selRole);if(err)return alert(err);if(u.role!==selRole)return alert("You are "+u.role.toUpperCase());currentUser=u;localStorage.setItem('lincoln_current',JSON.stringify(u));clearAuthForm();render();}
+function logout(){localStorage.removeItem('lincoln_current');currentUser=null;clearAuthForm();render();setTimeout(clearAuthForm,100);}
+function toBase64(f){return new Promise((res,rej)=>{const r=new FileReader();r.readAsDataURL(f);r.onload=()=>res(r.result);r.onerror=rej;});}
+function addStudent(){const admNo=document.getElementById('admNo').value.trim().toUpperCase();const name=document.getElementById('sName').value.trim();const semail=document.getElementById('sEmail').value.trim();const course=document.getElementById('sCourse').value.trim();if(!admNo||!name)return alert("Required");if(students.find(s=>s.admNo===admNo))return alert("Adm No exists");students.push({admNo,name,email:semail,course,createdBy:currentUser.email});save();render();alert("Student Added");}
+function removeStudent(admNo){if(!confirm("Remove "+admNo+"?"))return;students=students.filter(s=>s.admNo!==admNo);results=results.filter(r=>r.admNo!==admNo);save();render();}
+async function addMarks(){const admNo=document.getElementById('mAdm').value.trim().toUpperCase();const subj=document.getElementById('mSubj').value.trim();const marks=document.getElementById('mMarks').value.trim();const term=document.getElementById('mTerm').value.trim();const file=document.getElementById('mFile').files[0];if(!admNo||!subj||!marks)return alert("Required");if(!students.find(s=>s.admNo===admNo))return alert("No student with that Adm No");let docName="",docData="";if(file){docData=await toBase64(file);docName=file.name;}results.push({id:Date.now(),admNo,subject:subj,marks,term,docName,docData,by:currentUser.email,date:new Date().toLocaleDateString()});save();render();alert("Result Saved");}
+function deleteResult(id){results=results.filter(r=>r.id!==id);save();render();}
+function deleteUser(email){if(email.toLowerCase()===currentUser.email.toLowerCase())return alert("Cannot delete self");const t=users.find(u=>u.email.toLowerCase()===email.toLowerCase());if(t.role==='admin'&&users.filter(u=>u.role==='admin').length<=1)return alert("Cannot delete last Admin");if(!confirm("Remove "+email+"?"))return;users=users.filter(u=>u.email.toLowerCase()!==email.toLowerCase());save();render();}
+function render(){const aBox=document.getElementById('authBox');const lBox=document.getElementById('loggedBox');if(!currentUser){aBox.style.display="block";lBox.style.display="none";return;}aBox.style.display="none";lBox.style.display="block";document.getElementById('status').innerHTML="Logged in: <b>"+currentUser.email+"</b> as <b>"+currentUser.role.toUpperCase()+(currentUser.subject?" ("+currentUser.subject+")":"")+"</b>";let h="";if(currentUser.role==='admin'){h+='<h3>ADMIN Panel</h3><div style="background:#f6f8ff;padding:12px;border-radius:12px;margin-top:12px"><b>Add Student</b><div class="grid"><input id="admNo" placeholder="Adm No"><input id="sName" placeholder="Full Name"></div><div class="grid"><input id="sEmail" placeholder="Student Email"><input id="sCourse" placeholder="Course"></div><button onclick="addStudent()" style="background:#1e8e3e;color:white">Add Student</button></div><div style="background:#ffe9e9;padding:12px;border-radius:12px;margin-top:12px"><b>Users</b><div id="userList"></div></div><h4>All Students</h4><div id="studentList"></div><hr><h4>All Results</h4><div id="resultList"></div>';}else if(currentUser.role==='teacher'){h+='<h3>TEACHER - '+(currentUser.subject||'')+'</h3><div style="background:#fff8e1;padding:12px;border-radius:12px;margin-top:12px"><b>Add Marks</b><input id="mAdm" placeholder="Admission No"><div class="grid"><input id="mSubj" placeholder="Subject" value="'+(currentUser.subject||'')+'"><input id="mMarks" placeholder="Marks"></div><input id="mTerm" placeholder="Term"><input type="file" id="mFile"><button onclick="addMarks()" style="background:#ef6c00;color:white">Save Result</button></div><h4>Students</h4><div id="studentList"></div><hr><h4>Your Results</h4><div id="resultList"></div>';}else{h+='<h3>STUDENT Panel - My Private Data</h3><div id="myData"></div>';}document.getElementById('main').innerHTML=h;renderLists();}
+function renderLists(){const ul=document.getElementById('userList');if(ul){ul.innerHTML=users.map(u=>'<div style="border:1px solid #ddd;padding:10px;border-radius:10px;margin:6px 0;display:flex;justify-content:space-between;font-size:17px"><span><b>'+u.role.toUpperCase()+'</b> - '+u.email+(u.subject?' ('+u.subject+')':'')+'</span><button onclick="deleteUser(\''+u.email+'\')" style="width:auto;height:auto;padding:8px 12px;background:#666">Remove</button></div>').join("");}const sl=document.getElementById('studentList');const rl=document.getElementById('resultList');if(sl){if(currentUser.role!=='student'){sl.innerHTML=students.map(s=>'<div style="border:1px solid #ddd;padding:12px;border-radius:12px;margin:6px 0;font-size:17px"><b>'+s.admNo+'</b> - '+s.name+' ('+s.course+')<br><span style="font-size:14px;color:#555">'+s.email+'</span> '+(currentUser.role==='admin'?'<button onclick="removeStudent(\''+s.admNo+'\')" style="width:auto;height:auto;padding:6px 10px;background:red;margin-left:6px">Remove</button>':'')+'</div>').join("")||"<i>No students</i>";}}if(rl){let filtered=results;if(currentUser.role==='teacher')filtered=filtered.filter(r=>r.by===currentUser.email);if(!rl)return;rl.innerHTML=filtered.map(r=>'<div style="border:1px solid #ccc;padding:12px;border-radius:12px;margin:6px 0;font-size:17px"><b>'+r.admNo+'</b> - '+r.subject+': <b>'+r.marks+'</b> ('+r.term+')<br><span style="font-size:14px">'+r.by+'</span><br>'+(r.docData?'<a href="'+r.docData+'" download="'+r.docName+'">📄 '+r.docName+'</a>':'')+'<br><button onclick="deleteResult('+r.id+')" style="width:auto;height:auto;padding:6px 10px;background:#666">Delete</button></div>').join("")||"<i>No results</i>";}if(currentUser.role==='student')viewMyDataAuto();}
+function viewMyDataAuto(){const myEmail=currentUser.email.toLowerCase();const myStudent=students.find(s=>s.email.toLowerCase()===myEmail);const myResults=myStudent?results.filter(r=>r.admNo===myStudent.admNo):[];let html='<div style="background:#e8f5e9;padding:16px;border-radius:14px;margin-top:10px;font-size:18px">';if(!myStudent){html+='<b style="color:red">Profile not found</b><br>Ask Admin to add student with email: '+currentUser.email;}else{html+='<h4 style="margin:0 0 8px 0">'+myStudent.name+'</h4><b>'+myStudent.admNo+'</b><br>Course: '+myStudent.course+'<br>Email: '+myStudent.email+'<hr><b>Your Marks:</b><br>';if(myResults.length===0)html+="<i>No marks yet</i>";else html+=myResults.map(r=>'<div style="padding:8px 0;border-bottom:1px solid #ddd">'+r.subject+': <b>'+r.marks+'</b> ('+r.term+') '+(r.docData?'<br><a href="'+r.docData+'" download="'+r.docName+'">📄 '+r.docName+'</a>':'')+'</div>').join("");}html+='</div>';document.getElementById('myData').innerHTML=html;}
+document.getElementById('role').addEventListener('change',checkRoleChange);
+checkRoleChange();
+render();
 </script>
-</body>
-
-</html>
+</body></html>
