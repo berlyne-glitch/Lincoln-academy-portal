@@ -4,61 +4,32 @@
 <title>Lincoln Academy</title>
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  padding:30px 15px;
-  background:#eef2f7;
-  font-family:sans-serif;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  min-height:100vh;
-}
+body{margin:0;padding:30px 15px;background:#eef2f7;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh}
 h2{width:100%;max-width:480px;margin:0 0 6px 0;color:#0b57d0;font-size:26px}
 .small{width:100%;max-width:480px;margin:0 0 18px 0;color:#666;font-size:13px}
-#authBox,#loggedBox{
-  width:100%;
-  max-width:480px;
-  background:white;
-  padding:28px;
-  border-radius:16px;
-  box-shadow:0 8px 25px rgba(0,0,0,0.08);
-}
-.card{background:white;padding:0;border:none;box-shadow:none;border-radius:0;margin:0}
-input,select{
-  width:100%;
-  height:46px;
-  padding:0 14px;
-  margin:8px 0;
-  border-radius:10px;
-  border:1px solid #d0d5dd;
-  font-size:15px;
-  background:#f9fafb;
-}
-button{
-  width:100%;
-  height:46px;
-  margin:8px 0;
-  border-radius:10px;
-  border:none;
-  font-size:15px;
-  font-weight:700;
-  cursor:pointer;
-}
+#authBox,#loggedBox{width:100%;max-width:480px;background:white;padding:28px;border-radius:16px;box-shadow:0 8px 25px rgba(0,0,0,0.08)}
+input,select{width:100%;height:46px;padding:0 14px;margin:8px 0;border-radius:10px;border:1px solid #d0d5dd;font-size:15px;background:#f9fafb}
+button{width:100%;height:46px;margin:8px 0;border-radius:10px;border:none;font-size:15px;font-weight:700;cursor:pointer}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.suggest{position:absolute;left:0;right:0;top:100%;background:white;border:1px solid #d0d5dd;border-radius:10px;max-height:160px;overflow:auto;z-index:20;display:none}
+.suggest div{padding:10px;cursor:pointer;border-bottom:1px solid #eee}
+.suggest div:hover{background:#eef6ff}
 </style>
 </head><body>
 <h2>Lincoln Academy Portal</h2>
-<p class="small">Lincoln Academy</p>
+<p class="small">Lincoln Academy </p>
 <div id="authBox">
 <select id="role"><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select>
 <input id="email" placeholder="Email" autocomplete="off">
 <input id="pass" placeholder="Password" type="password" autocomplete="off">
-<input id="adminCode" placeholder="Enter Admin Secret Code" type="password" style="display:none" autocomplete="off">
-<input id="tSubj" placeholder="Subject you teach" style="display:none" autocomplete="off">
-<button onclick="signup()" style="background:#0b57d0;color:white">CREATE ACCOUNT</button>
+<div id="otpWrap" style="display:none">
+<div id="otpDisplay" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:10px;margin:6px 0;font-weight:700;color:#92400e;text-align:center">OTP will be sent to Admin email on LOGIN</div>
+<input id="adminOTP" placeholder="Enter 6-digit OTP" maxlength="6" autocomplete="off">
+</div>
+<button id="createBtn" onclick="signup()" style="background:#0b57d0;color:white">CREATE ACCOUNT</button>
 <button onclick="login()" style="background:#1e8e3e;color:white">LOGIN</button>
 <div id="msg" style="color:red;font-weight:bold;padding:10px"></div>
+<div id="blockInfo" style="display:none;background:#fee2e2;border:1px solid #fecaca;border-radius:10px;padding:10px;margin-top:8px;color:#dc2626;font-weight:700;text-align:center"></div>
 </div>
 <div id="loggedBox" style="display:none">
 <div id="status" style="padding:10px 0;font-size:18px"></div>
@@ -70,26 +41,86 @@ let users=JSON.parse(localStorage.getItem('lincoln_users')||'[]');
 let students=JSON.parse(localStorage.getItem('lincoln_students')||'[]');
 let results=JSON.parse(localStorage.getItem('lincoln_results')||'[]');
 let currentUser=JSON.parse(localStorage.getItem('lincoln_current')||'null');
-const ADMIN_SECRET="LINCOLN2026";
+let currentOTP=null; let otpTimeout=null;
+let loginAttempts=JSON.parse(localStorage.getItem('lincoln_attempts')||'{}');
+let blockDuration=5*60*1000;
 function save(){localStorage.setItem('lincoln_users',JSON.stringify(users));localStorage.setItem('lincoln_students',JSON.stringify(students));localStorage.setItem('lincoln_results',JSON.stringify(results));}
+function saveAttempts(){localStorage.setItem('lincoln_attempts',JSON.stringify(loginAttempts));}
 function showMsg(t){document.getElementById('msg').innerText=t;}
-function clearAuthForm(){document.getElementById('email').value="";document.getElementById('pass').value="";document.getElementById('adminCode').value="";document.getElementById('tSubj').value="";document.getElementById('msg').innerText="";document.getElementById('role').value="student";checkRoleChange();}
-function checkRoleChange(){const r=document.getElementById('role').value;document.getElementById('adminCode').style.display=(r==='admin')?'block':'none';document.getElementById('tSubj').style.display=(r==='teacher')?'block':'none';}
+function clearAuthForm(){document.getElementById('email').value="";document.getElementById('pass').value="";let o=document.getElementById('adminOTP'); if(o) o.value=""; document.getElementById('msg').innerText="";}
+function clearOTP(){currentOTP=null; let d=document.getElementById('otpDisplay'); if(d){d.innerText='OTP will be sent to Admin email on LOGIN'; d.style.background='#fef3c7';} let o=document.getElementById('adminOTP'); if(o) o.value=''; if(otpTimeout) clearTimeout(otpTimeout);}
+function checkRoleChange(){const r=document.getElementById('role').value; document.getElementById('otpWrap').style.display=(r==='admin')?'block':'none'; if(r!=='admin') clearOTP();}
 function validateRoleEmail(email,role){const e=email.toLowerCase();if(e.includes('admin')&&role!=='admin')return"Email has 'admin' must be Admin";if(role==='admin'&&!e.includes('admin'))return"Admin email must contain 'admin'";if(e.includes('teacher')&&role!=='teacher')return"Email has 'teacher' must be Teacher";if(role==='teacher'&&!e.includes('teacher'))return"Teacher email must contain 'teacher'";return null;}
-function signup(){const email=document.getElementById('email').value.trim();const pass=document.getElementById('pass').value;const role=document.getElementById('role').value;const subj=document.getElementById('tSubj').value.trim();const err=validateRoleEmail(email,role);if(err){showMsg(err);return alert(err);}if(role==='admin'){const code=document.getElementById('adminCode').value.trim();if(code!==ADMIN_SECRET){showMsg("Wrong Code");return alert("Wrong Admin Secret Code");}}if(role==='teacher'&&!subj){showMsg("Enter subject");return;}if(users.find(u=>u.email.toLowerCase()===email.toLowerCase())){showMsg("Exists");return;}users.push({email,pass,role,subject:role==='teacher'?subj:''});save();showMsg("Created. Login now");setTimeout(clearAuthForm,800);}
-function login(){const email=document.getElementById('email').value.trim();const pass=document.getElementById('pass').value;const selRole=document.getElementById('role').value;const u=users.find(x=>x.email.toLowerCase()===email.toLowerCase()&&x.pass===pass);if(!u)return alert("Wrong credentials");const err=validateRoleEmail(email,selRole);if(err)return alert(err);if(u.role!==selRole)return alert("You are "+u.role.toUpperCase());currentUser=u;localStorage.setItem('lincoln_current',JSON.stringify(u));clearAuthForm();render();}
-function logout(){localStorage.removeItem('lincoln_current');currentUser=null;clearAuthForm();render();setTimeout(clearAuthForm,100);}
+function isBlocked(email){
+  let e=email.toLowerCase(); if(!loginAttempts[e]) return false;
+  let data=loginAttempts[e];
+  if(data.blockedUntil && Date.now() < data.blockedUntil){
+    return Math.ceil((data.blockedUntil - Date.now())/1000);
+  }
+  if(data.blockedUntil && Date.now() >= data.blockedUntil){ delete loginAttempts[e]; saveAttempts(); return false; }
+  return false;
+}
+function signup(){
+  const email=document.getElementById('email').value.trim(); const pass=document.getElementById('pass').value; const role=document.getElementById('role').value;
+  if(role==='teacher'){showMsg("Teachers cannot self-register."); return alert("Only Admin can add teachers.");}
+  if(role==='admin'){if(users.some(u=>u.role==='admin')){return alert("Admin exists. Login as Admin to add more.");} if(!currentOTP){currentOTP=Math.floor(100000+Math.random()*900000).toString(); document.getElementById('otpDisplay').innerText='📧 OTP SENT - Check popup'; alert('Admin OTP: '+currentOTP); return;} if(document.getElementById('adminOTP').value.trim()!==currentOTP){showMsg("Wrong OTP"); return;}}
+  const err=validateRoleEmail(email,role); if(err){showMsg(err);return alert(err);}
+  if(users.find(u=>u.email.toLowerCase()===email.toLowerCase())){showMsg("Exists");return;}
+  users.push({email,pass,role,subject:''}); if(role==='student'&&!students.find(s=>s.email.toLowerCase()===email.toLowerCase())){students.push({admNo:'LINC'+(100+students.length),name:email.split('@')[0],email:email,course:'Form 2',createdBy:'self'});}
+  save(); localStorage.setItem('lincoln_returning','true'); document.getElementById('createBtn').style.display='none'; clearOTP(); showMsg("Created. Login now"); setTimeout(clearAuthForm,800);
+}
+function login(){
+  const email=document.getElementById('email').value.trim(); const pass=document.getElementById('pass').value; const selRole=document.getElementById('role').value;
+  if(!email||!pass) return alert("Enter email & password");
+  let blockedSec=isBlocked(email);
+  if(blockedSec){
+    document.getElementById('blockInfo').style.display='block';
+    document.getElementById('blockInfo').innerText='Blocked for '+blockedSec+' seconds (5 min security block after 3 fails)';
+    return alert("Too many failed attempts! Blocked for "+Math.ceil(blockedSec/60)+" min. Wait "+blockedSec+"s");
+  } else { document.getElementById('blockInfo').style.display='none'; }
+  const u=users.find(x=>x.email.toLowerCase()===email.toLowerCase()&&x.pass===pass);
+  if(!u){
+    let e=email.toLowerCase(); if(!loginAttempts[e]) loginAttempts[e]={count:0, blockedUntil:null};
+    loginAttempts[e].count++;
+    if(loginAttempts[e].count>=3){
+      loginAttempts[e].blockedUntil=Date.now()+blockDuration; loginAttempts[e].count=0; saveAttempts();
+      document.getElementById('blockInfo').style.display='block';
+      document.getElementById('blockInfo').innerText='BLOCKED 5 MINUTES - Too many wrong attempts';
+      return alert("Wrong credentials 3 times! You are blocked for 5 minutes.");
+    }
+    saveAttempts(); let left=3-loginAttempts[e].count;
+    return alert("Wrong credentials! Tries left: "+left);
+  }
+  delete loginAttempts[email.toLowerCase()]; saveAttempts();
+  document.getElementById('blockInfo').style.display='none';
+  const err=validateRoleEmail(email,selRole); if(err)return alert(err); if(u.role!==selRole)return alert("You are "+u.role.toUpperCase());
+  if(selRole==='admin'){
+    if(!currentOTP){
+      currentOTP=Math.floor(100000+Math.random()*900000).toString();
+      document.getElementById('otpDisplay').innerText='📧 OTP SENT to '+u.email+' - Check popup';
+      document.getElementById('otpDisplay').style.background='#dbeafe';
+      alert('📧 ADMIN OTP: '+currentOTP+'\nExpires in 2 mins, new every login');
+      otpTimeout=setTimeout(()=>{alert('OTP expired'); clearOTP();},120000); return;
+    }else{
+      if(document.getElementById('adminOTP').value.trim()!==currentOTP){alert("Wrong OTP"); clearOTP(); return;}
+    }
+  }
+  currentUser=u; localStorage.setItem('lincoln_current',JSON.stringify(u)); localStorage.setItem('lincoln_returning','true'); document.getElementById('createBtn').style.display='none'; clearOTP(); clearAuthForm(); render();
+}
+function logout(){clearOTP(); localStorage.removeItem('lincoln_current'); currentUser=null; clearAuthForm(); render(); document.getElementById('otpWrap').style.display='none'; document.getElementById('role').value='student'; checkRoleChange();}
 function toBase64(f){return new Promise((res,rej)=>{const r=new FileReader();r.readAsDataURL(f);r.onload=()=>res(r.result);r.onerror=rej;});}
-function addStudent(){const admNo=document.getElementById('admNo').value.trim().toUpperCase();const name=document.getElementById('sName').value.trim();const semail=document.getElementById('sEmail').value.trim();const course=document.getElementById('sCourse').value.trim();if(!admNo||!name)return alert("Required");if(students.find(s=>s.admNo===admNo))return alert("Adm No exists");students.push({admNo,name,email:semail,course,createdBy:currentUser.email});save();render();alert("Student Added");}
+function addStudent(){const admNo=document.getElementById('admNo').value.trim().toUpperCase(); const name=document.getElementById('sName').value.trim(); const semail=document.getElementById('sEmail').value.trim(); const course=document.getElementById('sCourse').value.trim()||'Form 2'; if(!admNo||!name)return alert("Required"); if(students.find(s=>s.admNo===admNo))return alert("Adm exists"); if(semail&&!users.find(u=>u.email.toLowerCase()===semail.toLowerCase())){users.push({email:semail,pass:'stud123',role:'student',subject:''});} students.push({admNo,name,email:semail,course,createdBy:currentUser.email});save();render();alert("Student Added");}
+function addTeacherAdmin(){const tName=document.getElementById('tNameA').value.trim(); const tEmail=document.getElementById('tEmailA').value.trim(); const tPass=document.getElementById('tPassA').value.trim()||'teach123'; const tSub=document.getElementById('tSubA').value; if(!tName||!tEmail)return alert("Fill"); if(users.find(u=>u.email.toLowerCase()===tEmail.toLowerCase()))return alert("Exists"); users.push({email:tEmail,pass:tPass,role:'teacher',subject:tSub,name:tName}); save();render();alert("Teacher added: "+tSub);}
 function removeStudent(admNo){if(!confirm("Remove "+admNo+"?"))return;students=students.filter(s=>s.admNo!==admNo);results=results.filter(r=>r.admNo!==admNo);save();render();}
-async function addMarks(){const admNo=document.getElementById('mAdm').value.trim().toUpperCase();const subj=document.getElementById('mSubj').value.trim();const marks=document.getElementById('mMarks').value.trim();const term=document.getElementById('mTerm').value.trim();const file=document.getElementById('mFile').files[0];if(!admNo||!subj||!marks)return alert("Required");if(!students.find(s=>s.admNo===admNo))return alert("No student with that Adm No");let docName="",docData="";if(file){docData=await toBase64(file);docName=file.name;}results.push({id:Date.now(),admNo,subject:subj,marks,term,docName,docData,by:currentUser.email,date:new Date().toLocaleDateString()});save();render();alert("Result Saved");}
+async function addMarks(){const admNo=document.getElementById('mAdm').value.trim().toUpperCase(); const subj=currentUser.subject||document.getElementById('mSubj').value.trim(); const marks=document.getElementById('mMarks').value.trim(); const term=document.getElementById('mTerm').value.trim(); const file=document.getElementById('mFile').files[0]; if(!admNo||!subj||!marks)return alert("Select student"); if(!students.find(s=>s.admNo===admNo))return alert("Search from system"); let docName="",docData="";if(file){docData=await toBase64(file);docName=file.name;} results.push({id:Date.now(),admNo,subject:subj,marks,term,docName,docData,by:currentUser.email,date:new Date().toLocaleDateString()});save();render();alert("Saved");}
 function deleteResult(id){results=results.filter(r=>r.id!==id);save();render();}
-function deleteUser(email){if(email.toLowerCase()===currentUser.email.toLowerCase())return alert("Cannot delete self");const t=users.find(u=>u.email.toLowerCase()===email.toLowerCase());if(t.role==='admin'&&users.filter(u=>u.role==='admin').length<=1)return alert("Cannot delete last Admin");if(!confirm("Remove "+email+"?"))return;users=users.filter(u=>u.email.toLowerCase()!==email.toLowerCase());save();render();}
-function render(){const aBox=document.getElementById('authBox');const lBox=document.getElementById('loggedBox');if(!currentUser){aBox.style.display="block";lBox.style.display="none";return;}aBox.style.display="none";lBox.style.display="block";document.getElementById('status').innerHTML="Logged in: <b>"+currentUser.email+"</b> as <b>"+currentUser.role.toUpperCase()+(currentUser.subject?" ("+currentUser.subject+")":"")+"</b>";let h="";if(currentUser.role==='admin'){h+='<h3>ADMIN Panel</h3><div style="background:#f6f8ff;padding:12px;border-radius:12px;margin-top:12px"><b>Add Student</b><div class="grid"><input id="admNo" placeholder="Adm No"><input id="sName" placeholder="Full Name"></div><div class="grid"><input id="sEmail" placeholder="Student Email"><input id="sCourse" placeholder="Course"></div><button onclick="addStudent()" style="background:#1e8e3e;color:white">Add Student</button></div><div style="background:#ffe9e9;padding:12px;border-radius:12px;margin-top:12px"><b>Users</b><div id="userList"></div></div><h4>All Students</h4><div id="studentList"></div><hr><h4>All Results</h4><div id="resultList"></div>';}else if(currentUser.role==='teacher'){h+='<h3>TEACHER - '+(currentUser.subject||'')+'</h3><div style="background:#fff8e1;padding:12px;border-radius:12px;margin-top:12px"><b>Add Marks</b><input id="mAdm" placeholder="Admission No"><div class="grid"><input id="mSubj" placeholder="Subject" value="'+(currentUser.subject||'')+'"><input id="mMarks" placeholder="Marks"></div><input id="mTerm" placeholder="Term"><input type="file" id="mFile"><button onclick="addMarks()" style="background:#ef6c00;color:white">Save Result</button></div><h4>Students</h4><div id="studentList"></div><hr><h4>Your Results</h4><div id="resultList"></div>';}else{h+='<h3>STUDENT Panel - My Private Data</h3><div id="myData"></div>';}document.getElementById('main').innerHTML=h;renderLists();}
+function deleteUser(email){if(email.toLowerCase()===currentUser.email.toLowerCase())return alert("Cannot delete self"); if(users.filter(u=>u.role==='admin').length<=1 && users.find(u=>u.email.toLowerCase()===email.toLowerCase())?.role==='admin')return alert("Cannot delete last Admin"); if(!confirm("Remove "+email+"?"))return; users=users.filter(u=>u.email.toLowerCase()!==email.toLowerCase());save();render();}
+function render(){const aBox=document.getElementById('authBox');const lBox=document.getElementById('loggedBox');if(!currentUser){aBox.style.display="block";lBox.style.display="none";return;}aBox.style.display="none";lBox.style.display="block";document.getElementById('status').innerHTML="Logged in: <b>"+currentUser.email+"</b> as <b>"+currentUser.role.toUpperCase()+(currentUser.subject?" ("+currentUser.subject+")":"")+"</b>";let h="";if(currentUser.role==='admin'){h+='<h3>ADMIN Panel</h3><div style="background:#f6f8ff;padding:12px;border-radius:12px;margin-top:12px"><b>Add Teacher (Admin assigns subject)</b><input id="tNameA" placeholder="Teacher Full Name"><input id="tEmailA" placeholder="Teacher Email"><input id="tPassA" placeholder="Temp Password" value="teach123"><select id="tSubA"><option>Mathematics</option><option>English</option><option>Biology</option><option>Chemistry</option><option>History</option><option>Physics</option></select><button onclick="addTeacherAdmin()" style="background:#0b57d0;color:white">Add Teacher with Subject</button></div><div style="background:#e8f5e9;padding:12px;border-radius:12px;margin-top:12px"><b>Add Student</b><div class="grid"><input id="admNo" placeholder="Adm No"><input id="sName" placeholder="Full Name"></div><div class="grid"><input id="sEmail" placeholder="Student Email"><input id="sCourse" placeholder="Class"></div><button onclick="addStudent()" style="background:#1e8e3e;color:white">Add Student</button></div><div style="background:#ffe9e9;padding:12px;border-radius:12px;margin-top:12px"><b>Users - Admin can Remove Anyone</b><div id="userList"></div></div><h4>All Students</h4><div id="studentList"></div><hr><h4>All Results</h4><div id="resultList"></div>';}else if(currentUser.role==='teacher'){h+='<h3>TEACHER - '+(currentUser.subject||'')+'</h3><div style="background:#fff8e1;padding:12px;border-radius:12px;margin-top:12px"><b>Add Marks - Search Student</b><div style="position:relative"><input id="mAdm" placeholder="Search name or Adm No" oninput="onStudentSearch()" onfocus="onStudentSearch()" autocomplete="off"><div id="searchBox" class="suggest"></div></div><div class="grid"><input id="mSubj" placeholder="Subject" value="'+(currentUser.subject||'')+'" disabled style="background:#eee"><input id="mMarks" placeholder="Marks"></div><input id="mTerm" placeholder="Term"><input type="file" id="mFile"><button onclick="addMarks()" style="background:#ef6c00;color:white">Save Result</button></div><h4>Students</h4><div id="studentList"></div><hr><h4>Your Results</h4><div id="resultList"></div>';}else{h+='<h3>STUDENT Panel</h3><div id="myData"></div>';}document.getElementById('main').innerHTML=h;renderLists();}
 function renderLists(){const ul=document.getElementById('userList');if(ul){ul.innerHTML=users.map(u=>'<div style="border:1px solid #ddd;padding:10px;border-radius:10px;margin:6px 0;display:flex;justify-content:space-between;font-size:17px"><span><b>'+u.role.toUpperCase()+'</b> - '+u.email+(u.subject?' ('+u.subject+')':'')+'</span><button onclick="deleteUser(\''+u.email+'\')" style="width:auto;height:auto;padding:8px 12px;background:#666">Remove</button></div>').join("");}const sl=document.getElementById('studentList');const rl=document.getElementById('resultList');if(sl){if(currentUser.role!=='student'){sl.innerHTML=students.map(s=>'<div style="border:1px solid #ddd;padding:12px;border-radius:12px;margin:6px 0;font-size:17px"><b>'+s.admNo+'</b> - '+s.name+' ('+s.course+')<br><span style="font-size:14px;color:#555">'+s.email+'</span> '+(currentUser.role==='admin'?'<button onclick="removeStudent(\''+s.admNo+'\')" style="width:auto;height:auto;padding:6px 10px;background:red;margin-left:6px">Remove</button>':'')+'</div>').join("")||"<i>No students</i>";}}if(rl){let filtered=results;if(currentUser.role==='teacher')filtered=filtered.filter(r=>r.by===currentUser.email);if(!rl)return;rl.innerHTML=filtered.map(r=>'<div style="border:1px solid #ccc;padding:12px;border-radius:12px;margin:6px 0;font-size:17px"><b>'+r.admNo+'</b> - '+r.subject+': <b>'+r.marks+'</b> ('+r.term+')<br><span style="font-size:14px">'+r.by+'</span><br>'+(r.docData?'<a href="'+r.docData+'" download="'+r.docName+'">📄 '+r.docName+'</a>':'')+'<br><button onclick="deleteResult('+r.id+')" style="width:auto;height:auto;padding:6px 10px;background:#666">Delete</button></div>').join("")||"<i>No results</i>";}if(currentUser.role==='student')viewMyDataAuto();}
 function viewMyDataAuto(){const myEmail=currentUser.email.toLowerCase();const myStudent=students.find(s=>s.email.toLowerCase()===myEmail);const myResults=myStudent?results.filter(r=>r.admNo===myStudent.admNo):[];let html='<div style="background:#e8f5e9;padding:16px;border-radius:14px;margin-top:10px;font-size:18px">';if(!myStudent){html+='<b style="color:red">Profile not found</b><br>Ask Admin to add student with email: '+currentUser.email;}else{html+='<h4 style="margin:0 0 8px 0">'+myStudent.name+'</h4><b>'+myStudent.admNo+'</b><br>Course: '+myStudent.course+'<br>Email: '+myStudent.email+'<hr><b>Your Marks:</b><br>';if(myResults.length===0)html+="<i>No marks yet</i>";else html+=myResults.map(r=>'<div style="padding:8px 0;border-bottom:1px solid #ddd">'+r.subject+': <b>'+r.marks+'</b> ('+r.term+') '+(r.docData?'<br><a href="'+r.docData+'" download="'+r.docName+'">📄 '+r.docName+'</a>':'')+'</div>').join("");}html+='</div>';document.getElementById('myData').innerHTML=html;}
-document.getElementById('role').addEventListener('change',checkRoleChange);
-checkRoleChange();
-render();
+function onStudentSearch(){const q=document.getElementById('mAdm').value.trim().toLowerCase(); const box=document.getElementById('searchBox'); if(!q){box.style.display='none';return;} const filtered=students.filter(s=>s.name.toLowerCase().includes(q)||s.admNo.toLowerCase().includes(q)).slice(0,6); if(filtered.length===0){box.style.display='none';return;} box.innerHTML=filtered.map(s=>'<div onclick="pickStudent(\''+s.admNo+'\')"><b>'+s.admNo+'</b> - '+s.name+'</div>').join(''); box.style.display='block';}
+function pickStudent(adm){document.getElementById('mAdm').value=adm;document.getElementById('searchBox').style.display='none';}
+document.getElementById('role').addEventListener('change',checkRoleChange); checkRoleChange(); render();
+if(localStorage.getItem('lincoln_returning')==='true'){let b=document.getElementById('createBtn'); if(b) b.style.display='none';}
 </script>
 </body></html>
