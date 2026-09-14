@@ -4,14 +4,47 @@
 <title>Lincoln Academy</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;padding:0;width:100%;height:100%;background:#ffffff;font-family:sans-serif}
-h2{margin:0;padding:28px 20px 6px 20px;font-size:28px;color:#0b57d0;width:100%}
-.small{padding:0 20px 14px 20px;font-size:14px;color:#666;width:100%}
-#authBox,#loggedBox{width:100%;margin:0;border-radius:0;box-shadow:none;border:none;padding:20px}
-.card{background:white;padding:0;border-radius:0;box-shadow:none;margin:0}
-input,select{width:100%;height:58px;padding:0 16px;margin:8px 0;border-radius:14px;border:2px solid #ccc;font-size:19px;background:#f9f9f9}
-input:focus,select:focus{border-color:#0b57d0;background:white;outline:none}
-button{width:100%;height:58px;margin:8px 0;border-radius:14px;border:none;font-size:19px;font-weight:900;letter-spacing:0.5px}
+body{
+  margin:0;
+  padding:30px 15px;
+  background:#eef2f7;
+  font-family:sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
+}
+h2{width:100%;max-width:480px;margin:0 0 6px 0;color:#0b57d0;font-size:26px}
+.small{width:100%;max-width:480px;margin:0 0 18px 0;color:#666;font-size:13px}
+#authBox,#loggedBox{
+  width:100%;
+  max-width:480px;
+  background:white;
+  padding:28px;
+  border-radius:16px;
+  box-shadow:0 8px 25px rgba(0,0,0,0.08);
+}
+.card{background:white;padding:0;border:none;box-shadow:none;border-radius:0;margin:0}
+input,select{
+  width:100%;
+  height:46px;
+  padding:0 14px;
+  margin:8px 0;
+  border-radius:10px;
+  border:1px solid #d0d5dd;
+  font-size:15px;
+  background:#f9fafb;
+}
+button{
+  width:100%;
+  height:46px;
+  margin:8px 0;
+  border-radius:10px;
+  border:none;
+  font-size:15px;
+  font-weight:700;
+  cursor:pointer;
+}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 </style>
 </head><body>
