@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lincoln Study Tracker</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:30px 15px;background:#eef2f7;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh}
+h2{width:100%;max-width:480px;margin:0 0 6px 0;color:#0b57d0;font-size:26px}
+.small{width:100%;max-width:480px;margin:0 0 18px 0;color:#666;font-size:13px}
+.card{width:100%;max-width:480px;background:white;padding:22px;border-radius:16px;box-shadow:0 8px 25px rgba(0,0,0,0.08);margin-bottom:16px}
+label{font-size:13px;font-weight:700;color:#333}
+input[type="text"],input[type="date"]{width:100%;height:46px;padding:0 14px;margin:6px 0 12px 0;border-radius:10px;border:1px solid #d0d5dd;font-size:15px;background:#f9fafb}
+.addBtn{width:100%;height:46px;border-radius:10px;border:none;background:#0b57d0;color:white;font-size:15px;font-weight:700;cursor:pointer;margin:8px 0}
+.counts{display:flex;justify-content:space-between;font-size:13px;color:#666;margin:14px 0 10px 0}
+.taskRow{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #eee}
+.check{width:20px;height:20px;min-width:20px;accent-color:#0b57d0;cursor:pointer}
+.taskInfo{flex:1;display:flex;flex-direction:column;gap:2px}
+.taskTitle{font-weight:700;font-size:15px}
+.taskMeta{font-size:12px;color:#777}
+.deleteBtn{padding:7px 14px;background:#0b57d0;color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+.done{text-decoration:line-through;color:#888}
+.overdue{color:#dc2626;font-weight:700;font-size:11px}
+/* Achievement styles */
+.statsGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0}
+.statBox{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;text-align:center}
+.statNum{font-size:20px;font-weight:800;color:#0b57d0}
+.statLabel{font-size:11px;color:#666}
+.progressWrap{background:#e5e7eb;border-radius:20px;height:10px;overflow:hidden;margin:10px 0}
+.progressBar{height:100%;background:#0b57d0;transition:width 0.5s}
+.badge{display:inline-block;background:#dcfce7;color:#166534;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;margin:3px}
+.reminder{width:100%;max-width:480px;background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:12px;margin-bottom:14px;display:none}
+</style>
+</head>
+<body>
+<h2>Lincoln Academy Study Tracker</h2>
+<p class="small">Track Your Studies - Stay on top</p>
+
+<div id="reminderBox" class="reminder"></div>
+
+<div class="card">
+  <b style="font-size:16px"> Your Achievement</b>
+  <div class="statsGrid">
+    <div class="statBox"><div id="totalNum" class="statNum">0</div><div class="statLabel">Total Tasks</div></div>
+    <div class="statBox"><div id="compNum" class="statNum" style="color:#16a34a">0</div><div class="statLabel">Completed</div></div>
+    <div class="statBox"><div id="pendNum" class="statNum" style="color:#ef6c00">0</div><div class="statLabel">Pending</div></div>
+  </div>
+  <div class="progressWrap"><div id="progressBar" class="progressBar" style="width:0%"></div></div>
+  <div id="progressText" style="font-size:12px;color:#666">0% completed</div>
+  <div id="badges" style="margin-top:8px"></div>
+</div>
+
+<div class="card">
+  <label>Task Title</label>
+  <input id="title" type="text" placeholder="Task">
+  <label>Subject</label>
+  <input id="subject" type="text" placeholder="Subject">
+  <label>Due Date</label>
+  <input id="dueDate" type="date">
+  <button class="addBtn" onclick="addTask()">Add Task</button>
+
+  <div class="counts">
+    <span id="pendingCount">0 pending</span>
+    <span id="completedCount">0 completed</span>
+  </div>
+
+  <div id="taskList"></div>
+  <hr style="margin:16px 0;border:none;border-top:1px solid #eee">
+  <b style="font-size:14px">Finished & Achieved</b>
+  <div id="finishedList" style="margin-top:8px"></div>
+</div>
+
+<script>
+let tasks = JSON.parse(localStorage.getItem('lincoln_tasks')||'[]');
+
+function addTask(){
+  let t=document.getElementById('title').value.trim();
+  let s=document.getElementById('subject').value.trim();
+  let d=document.getElementById('dueDate').value;
+  if(!t) return alert('Enter Task Title');
+  tasks.push({id:Date.now(), title:t, subject:s, dueDate:d, completed:false, finishedAt:null});
+  save(); document.getElementById('title').value=''; document.getElementById('subject').value=''; render();
+}
+function toggleTask(id){
+  tasks=tasks.map(x=>{
+    if(x.id===id){
+      let nowDone=!x.completed;
+      return {...x, completed:nowDone, finishedAt: nowDone? new Date().toISOString() : null};
+    }
+    return x;
+  });
+  save(); render();
+}
+function deleteTask(id){ tasks=tasks.filter(x=>x.id!==id); save(); render(); }
+function save(){ localStorage.setItem('lincoln_tasks', JSON.stringify(tasks)); }
+
+function render(){
+  let today=new Date().toISOString().split('T')[0];
+  let total=tasks.length;
+  let completed=tasks.filter(x=>x.completed).length;
+  let pending=total-completed;
+  let percent= total? Math.round(completed/total*100):0;
+
+  document.getElementById('totalNum').innerText=total;
+  document.getElementById('compNum').innerText=completed;
+  document.getElementById('pendNum').innerText=pending;
+  document.getElementById('progressBar').style.width=percent+'%';
+  document.getElementById('progressText').innerText=percent+'% completed - '+(percent===100&&total>0?' All done! Great job!': percent>=50?'Keep going!':'Start strong!');
+  document.getElementById('pendingCount').innerText=pending+' pending';
+  document.getElementById('completedCount').innerText=completed+' completed';
+
+  // Badges
+  let badgeHtml='';
+  if(completed>=1) badgeHtml+='<span class="badge"> First Task Done</span>';
+  if(completed>=5) badgeHtml+='<span class="badge"> 5 Tasks Achieved</span>';
+  if(completed>=10) badgeHtml+='<span class="badge"> 10 Tasks - Champion</span>';
+  if(percent===100&&total>0) badgeHtml+='<span class="badge"> Perfect - All Completed</span>';
+  document.getElementById('badges').innerHTML=badgeHtml||'<span style="font-size:11px;color:#999">Complete tasks to earn badges</span>';
+
+  // Active tasks
+  let active=tasks.filter(x=>!x.completed);
+  document.getElementById('taskList').innerHTML=active.map(t=>{
+    let isOverdue=t.dueDate && t.dueDate < today;
+    return `<div class="taskRow">
+      <input type="checkbox" class="check" onchange="toggleTask(${t.id})">
+      <div class="taskInfo">
+        <span class="taskTitle">${t.title}</span>
+        <span class="taskMeta">${t.subject||'No subject'} ${t.dueDate? ' '+t.dueDate : ''} ${isOverdue?`<span class="overdue">⚠ Overdue</span>`:''}</span>
+      </div>
+      <button class="deleteBtn" onclick="deleteTask(${t.id})">Delete</button>
+    </div>`;
+  }).join('') || '<i style="color:#888;font-size:13px">No active tasks - add one!</i>';
+
+  // Finished list
+  let finished=tasks.filter(x=>x.completed);
+  document.getElementById('finishedList').innerHTML=finished.map(t=>{
+    return `<div class="taskRow" style="opacity:0.8">
+      <div style="color:#16a34a;font-weight:700"></div>
+      <div class="taskInfo"><span class="taskTitle done">${t.title}</span><span class="taskMeta">${t.subject} • Finished ${t.finishedAt? new Date(t.finishedAt).toLocaleDateString():''}</span></div>
+      <button class="deleteBtn" onclick="deleteTask(${t.id})">Delete</button>
+    </div>`;
+  }).join('') || '<i style="color:#888;font-size:13px">Nothing finished yet</i>';
+
+  checkReminder();
+}
+
+function checkReminder(){
+  let today=new Date().toISOString().split('T')[0];
+  let overdue=tasks.filter(t=>!t.completed && t.dueDate && t.dueDate < today);
+  let dueToday=tasks.filter(t=>!t.completed && t.dueDate===today);
+  let box=document.getElementById('reminderBox');
+  if(overdue.length===0 && dueToday.length===0){ box.style.display='none'; return; }
+  let msg='';
+  if(overdue.length) msg+=`You have <b>${overdue.length} overdue</b> task(s): ${overdue.map(x=>x.title).join(', ')}<br>`;
+  if(dueToday.length) msg+=`<b>${dueToday.length} task(s) due today</b>: ${dueToday.map(x=>x.title).join(', ')}`;
+  box.innerHTML=msg; box.style.display='block';
+}
+
+// Show reminder every time they log in (page load)
+window.onload=()=>{ render(); setTimeout(checkReminder, 500); };
+</script>
+</body>
+</html>
